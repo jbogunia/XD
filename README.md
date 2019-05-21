@@ -19,7 +19,7 @@ Zapis ogłoszeń z pliku jest już ogarnięty i chyba działa ok :)
 # Frontend
 
 Frontend ogarnia Karol & Irmina i wy chyba wiecie co tutaj macie ogarnąć XD
-[Dokumentacja API](https://dark-comet-2466.postman.co/collections/2823010-411ea320-ceb9-4d83-a749-93527f30c8b7?workspace=e3e2f579-26b1-4dfc-8638-c2a547118c8c)
+[Dokumentacja API](https://documenter.getpostman.com/view/2823010/S1TN71rS)
 
 # Testy
 
