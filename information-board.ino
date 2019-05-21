@@ -67,65 +67,74 @@ void setup() {
 
   server.on("/advert", HTTP_PUT, [](AsyncWebServerRequest * request) {
     Serial.println("Advert PUT request");
-    const size_t CAPACITY = JSON_OBJECT_SIZE(100);
-    StaticJsonDocument<CAPACITY> doc;
+    if (request->hasParam("password", true) && request->hasParam("title", true) && request->hasParam("body", true)) {
+      String adertTitle = request->getParam("title", true)->value();
+      String advertBody = request->getParam("body", true)->value();
+      String advertPassword = request->getParam("password", true)->value();
 
-    // create an object
-    JsonObject advert = doc.to<JsonObject>();
-    advert["title"] = "New advert Title";
-    advert["body"] = "New advert Body";
-    if (fileAdapter.saveAdvert(advert)) {
-      Serial.println("New advert saved!");
+      const size_t CAPACITY = JSON_OBJECT_SIZE(100);
+      StaticJsonDocument<CAPACITY> doc;
+
+      // create an object
+      JsonObject advert = doc.to<JsonObject>();
+      advert["title"] = adertTitle;
+      advert["body"] = advertBody;
+      advert["password"] = advertPassword;
+      if (fileAdapter.saveAdvert(advert)) {
+        Serial.println("New advert saved!");
+        AsyncResponseStream *response = request->beginResponseStream("application/json");
+        serializeJson(advert, *response);
+        request->send(response);
+      } else {
+        request->send(500, "application/json", "{\"message\" : \"\Someting wetn wrong :(\"}" );
+      }
+    } else {
+      request->send(400, "application/json", "{\"message\" : \"\You need to specyify all request params!\"}" );
     }
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    serializeJson(fileAdapter.rootObject, *response);
-    request->send(response);
-
   });
 
   server.on("/advert", HTTP_PATCH, [](AsyncWebServerRequest * request) {
     Serial.println("Advert PATCH request");
-    const size_t CAPACITY = JSON_OBJECT_SIZE(100);
-    StaticJsonDocument<CAPACITY> doc;
+    if (request->hasParam("id") && request->hasParam("password") && request->hasParam("title") && request->hasParam("body")) {
+      int advertId = request->getParam("id")->value().toInt();
+      String advertTitle = request->getParam("title")->value();
+      String advertBody = request->getParam("body")->value();
+      String advertPassword = request->getParam("password")->value();
 
-    // create an object
-    JsonObject advert = doc.to<JsonObject>();
-      advert["title"] = "New advert Title";
-      advert["body"] = "New advert Body";
-      if (fileAdapter.saveAdvert(advert)) {
-        Serial.println("New advert saved!");
+      if (fileAdapter.editAdvert(advertId, advertTitle, advertBody)) {
+        Serial.println("Advert edited!");
+        const size_t CAPACITY = JSON_OBJECT_SIZE(100);
+        StaticJsonDocument<CAPACITY> doc;
+
+        JsonObject advert = doc.to<JsonObject>();
+        advert["id"] = advertId;
+        advert["title"] = advertTitle;
+        advert["body"] = advertBody;
+
+        AsyncResponseStream *response = request->beginResponseStream("application/json");
+        serializeJson(advert, *response);
+        request->send(response);
       }
-
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    serializeJson(fileAdapter.rootObject, *response);
-    request->send(response);
-
+    } else {
+      request->send(400, "application/json", "{\"message\" : \"\You need to specyify all request params!\"}" );
+    }
   });
 
   server.on("/advert", HTTP_DELETE, [](AsyncWebServerRequest * request) {
     Serial.println("Avdert remove request");
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    const size_t CAPACITY = JSON_OBJECT_SIZE(50);
-    StaticJsonDocument<CAPACITY> doc;
-    JsonObject responseMessage = doc.to<JsonObject>();
     if (request->hasParam("id") && request->hasParam("password")) {
+      int advertId = request->getParam("id")->value().toInt();
+      String advertPassword = request->getParam("password")->value();
       Serial.print("Removing advert: ");
-      Serial.println(request->getParam("id")->value());
+      Serial.println(advertId);
+      if (fileAdapter.removeAdvert(advertId, advertPassword)) {
+        request->send(200, "application/json", "{\"message\" : \"\Advert removed!\"}" );
+      } else {
+        request->send(500, "application/json", "{\"message\" : \"\Something went wrong :(\"}" );
+      }
     } else {
-      responseMessage["message"] = "Advert ID or password is missing!";
-      serializeJson(responseMessage, *response);
-      request->send(response);
+      request->send(400, "application/json", "{\"message\" : \"\You need to specyify all request params!\"}" );
     }
-
-    if (fileAdapter.removeAdvert(request->getParam("id")->value().toInt())) {
-      responseMessage["message"] = "Advert removed!";
-    } else {
-      responseMessage["message"] = "Something went wrong :/";
-    }
-
-    serializeJson(responseMessage, *response);
-    request->send(response);
   });
   server.begin();
 }

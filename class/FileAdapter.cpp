@@ -10,7 +10,7 @@ private:
 public:
     JsonArray loadAdverts();
     bool saveAdvert(JsonObject newAdvert);
-    bool removeAdvert(int id);
+    bool removeAdvert(int id, String advertPassword);
     bool editAdvert(int id, String title, String body);
     char getAdverts();
     int getAdvertIndex(int advertId);
@@ -35,7 +35,7 @@ FileAdapter& FileAdapter::getInstance() {
 }
 
 FileAdapter::~FileAdapter() {
-    //this->adverts = NULL;
+    this->arrayDoc.clear();
 }
 
 JsonArray FileAdapter::loadAdverts() {
@@ -122,7 +122,7 @@ int FileAdapter::getAdvertIndex(int advertId){
   return -1;
 }
 
-bool FileAdapter::removeAdvert(int id){
+bool FileAdapter::removeAdvert(int id, String advertPassword){
   int index = this->getAdvertIndex(id);
   if(index != -1){
     Serial.print("Removing advert on ");
@@ -144,7 +144,7 @@ bool FileAdapter::editAdvert(int id, String title, String body){
     Serial.print("Editing advert on ");
     Serial.print(index);
     Serial.println(" position in array");
-    JsonVariant variant = this->advertsArray.getMember(index);
+    JsonVariant variant = this->advertsArray.getElement(index);
     variant.getMember("title").set(title);
     variant.getMember("body").set(body);
     this->saveAdvertsToJson();
