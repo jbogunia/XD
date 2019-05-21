@@ -1,0 +1,16 @@
+{
+   "adverts":[
+      {
+         "id":1,
+         "title":"First advert title",
+         "body":"First advert body",
+         "password": "password"
+      },
+      {
+         "id":2,
+         "title":"Second advert title",
+         "body":"second advert body",
+         "password": "password"
+      }
+   ]
+}
