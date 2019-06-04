@@ -1,6 +1,8 @@
 #include <ArduinoJson.h>
 #include "FS.h"
 
+//to można rozbić na plik nagłówkowy i cpp, poprawić formatowanie i logike
+
 class FileAdapter {
 
 private:
@@ -11,14 +13,14 @@ public:
     JsonArray loadAdverts();
     bool saveAdvert(JsonObject newAdvert);
     bool removeAdvert(int id, String advertPassword);
-    bool editAdvert(int id, String title, String body);
+    bool editAdvert(int id, String title, String body, String password);
     char getAdverts();
     int getAdvertIndex(int advertId);
-    ~FileAdapter();
     static FileAdapter& getInstance();
     StaticJsonDocument<2000> arrayDoc;
     JsonObject rootObject;
     JsonArray advertsArray;
+	~FileAdapter();
 
 };
 
@@ -128,27 +130,39 @@ bool FileAdapter::removeAdvert(int id, String advertPassword){
     Serial.print("Removing advert on ");
     Serial.print(index);
     Serial.println(" position in array");
-    this->advertsArray.remove(index);
-
-    this->saveAdvertsToJson();
-    return true;
+	JsonVariant variant = this->advertsArray.getElement(index);
+	Serial.println(variant.getMember("password").as<String>());
+	if(variant.getMember("password").as<String>() == advertPassword){
+		this->advertsArray.remove(index);
+		this->saveAdvertsToJson();
+		return true;
+	} else {
+		Serial.println("Password does not match");
+		return false;
+	}
   } else {
     Serial.println("Given advert not found :(");
     return false;
   }
 }
 
-bool FileAdapter::editAdvert(int id, String title, String body){
+bool FileAdapter::editAdvert(int id, String title, String body, String password){
   int index = this->getAdvertIndex(id);
   if(index != -1){
     Serial.print("Editing advert on ");
     Serial.print(index);
     Serial.println(" position in array");
     JsonVariant variant = this->advertsArray.getElement(index);
-    variant.getMember("title").set(title);
-    variant.getMember("body").set(body);
-    this->saveAdvertsToJson();
-    return true;
+	Serial.println(variant.getMember("password").as<String>());
+	if(variant.getMember("password").as<String>() == password){
+		variant.getMember("title").set(title);
+		variant.getMember("body").set(body);
+		this->saveAdvertsToJson();
+		return true;
+	} else {
+		Serial.println("Given password does not match");
+		return false;
+	}
   } else {
     Serial.println("Given advert not found :(");
     return false;

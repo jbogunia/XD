@@ -27,7 +27,7 @@ void setup() {
   Serial.println(WiFi.softAPConfig(localIp, gateway, subnet) ? "Ready" : "Failed!");
 
   Serial.print("Setting soft-AP ... ");
-  Serial.println(WiFi.softAP("teest") ? "Ready" : "Failed!");
+  Serial.println(WiFi.softAP("Information-Board") ? "Ready" : "Failed!");
 
   Serial.print("Soft-AP IP address = ");
   Serial.println(WiFi.softAPIP());
@@ -37,34 +37,43 @@ void setup() {
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
-
+  
+  //Tutaj obsługiwane są requuesty, poniższy zwraca plik index.html z pamięci urządzenia
   server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/index.html");
     Serial.println("Index.html GET Request");
   });
 
+  //Ten endpoint odpowiada za zwrócenie listy wszystkich ogłoszeń w formacie JSON 
+  //(wraca z pamięci podręcznej, ale wszystkie ogłoszenia zapisywane/modyfikowane są równiez w pliku adverts.json - dostępne są po restartie urządzenia)
   server.on("/advert", HTTP_GET, [](AsyncWebServerRequest * request) {
     Serial.println("Adverts GET Request");
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     serializeJson(fileAdapter.advertsArray, *response);
     request->send(response);
   });
-
+  
+  //Zwraca kaskadowy arkusz stylów z pamięci urządzenia
   server.on("/main.css", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/main.css");
     Serial.println("main.css Request");
   });
-
+  
+  //Zwraca js idk co to xD (pytać Karola)
   server.on("/resources.js", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/resources.js");
     Serial.println("resources.js Request");
   });
-
+  
+  //Zwraca js, zapewne logika frontendu
   server.on("/main.js", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/main.js");
     Serial.println("main.js Request");
   });
 
+  
+  //Endpoint umożliwiający dodanie nowego ogłoszenia
+  //Wymagane pola: title, body, password (trzeba by zrobić ich validacje, aktualnie tylko sprawdza, czy są w requescie)
   server.on("/advert", HTTP_PUT, [](AsyncWebServerRequest * request) {
     Serial.println("Advert PUT request");
     if (request->hasParam("password", true) && request->hasParam("title", true) && request->hasParam("body", true)) {
@@ -86,13 +95,15 @@ void setup() {
         serializeJson(advert, *response);
         request->send(response);
       } else {
-        request->send(500, "application/json", "{\"message\" : \"\Someting wetn wrong :(\"}" );
+        request->send(500, "application/json", "{\"message\" : \"\Someting went wrong :(\"}" );
       }
     } else {
       request->send(400, "application/json", "{\"message\" : \"\You need to specyify all request params!\"}" );
     }
   });
 
+  //Endpoint służący do edycji ogłoszenia
+  //Wymagane pola: id,title, body, password (rówież rzydała by się validacja)
   server.on("/advert", HTTP_PATCH, [](AsyncWebServerRequest * request) {
     Serial.println("Advert PATCH request");
     if (request->hasParam("id") && request->hasParam("password") && request->hasParam("title") && request->hasParam("body")) {
@@ -101,7 +112,7 @@ void setup() {
       String advertBody = request->getParam("body")->value();
       String advertPassword = request->getParam("password")->value();
 
-      if (fileAdapter.editAdvert(advertId, advertTitle, advertBody)) {
+      if (fileAdapter.editAdvert(advertId, advertTitle, advertBody, advertPassword)) {
         Serial.println("Advert edited!");
         const size_t CAPACITY = JSON_OBJECT_SIZE(100);
         StaticJsonDocument<CAPACITY> doc;
@@ -114,12 +125,16 @@ void setup() {
         AsyncResponseStream *response = request->beginResponseStream("application/json");
         serializeJson(advert, *response);
         request->send(response);
+      } else {
+          request->send(401, "application/json", "{\"message\" : \"\Given passowrd does not match!\"}" );
       }
     } else {
       request->send(400, "application/json", "{\"message\" : \"\You need to specyify all request params!\"}" );
     }
   });
-
+  
+  //Endpoint służący do usuwania ogłoszenia
+  //Wymagane pola: id, password
   server.on("/advert", HTTP_DELETE, [](AsyncWebServerRequest * request) {
     Serial.println("Avdert remove request");
     if (request->hasParam("id") && request->hasParam("password")) {
@@ -130,7 +145,7 @@ void setup() {
       if (fileAdapter.removeAdvert(advertId, advertPassword)) {
         request->send(200, "application/json", "{\"message\" : \"\Advert removed!\"}" );
       } else {
-        request->send(500, "application/json", "{\"message\" : \"\Something went wrong :(\"}" );
+          request->send(401, "application/json", "{\"message\" : \"\Given passowrd does not match!\"}" );
       }
     } else {
       request->send(400, "application/json", "{\"message\" : \"\You need to specyify all request params!\"}" );
