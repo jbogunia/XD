@@ -1,5 +1,6 @@
 #include <ArduinoJson.h>
 #include "FS.h"
+#include "ErrorResponse.cpp"
 
 //to można rozbić na plik nagłówkowy i cpp, poprawić formatowanie i logike
 
@@ -11,17 +12,16 @@ private:
 
 public:
     JsonArray loadAdverts();
-    bool saveAdvert(JsonObject newAdvert);
-    bool removeAdvert(int id, String advertPassword);
-    bool editAdvert(int id, String title, String body, String password);
+    ErrorResponse saveAdvert(JsonObject newAdvert);
+    ErrorResponse removeAdvert(int id, String advertPassword);
+    ErrorResponse editAdvert(int id, String title, String body, String password);
     char getAdverts();
     int getAdvertIndex(int advertId);
     static FileAdapter& getInstance();
     StaticJsonDocument<2000> arrayDoc;
     JsonObject rootObject;
     JsonArray advertsArray;
-	~FileAdapter();
-
+	  ~FileAdapter();
 };
 
 FileAdapter::FileAdapter () {
@@ -91,7 +91,7 @@ bool FileAdapter::saveAdvertsToJson(){
   return true;
 }
 
-bool FileAdapter::saveAdvert(JsonObject newAdvert) {
+ErrorResponse FileAdapter::saveAdvert(JsonObject newAdvert) {
   int id = 0;
   Serial.print("Adverts count: ");
   Serial.println(this->advertsArray.size());
@@ -102,7 +102,14 @@ bool FileAdapter::saveAdvert(JsonObject newAdvert) {
 
   newAdvert["id"] = id;
   this->advertsArray.add(newAdvert);
-  return this->saveAdvertsToJson();
+
+  if(this->saveAdvertsToJson()){
+      ErrorResponse response(200, "Advert saved");
+      return response;
+  } else {
+      ErrorResponse response(500, "Something went wrong  :(");
+      return response;
+  }
 }
 
 int FileAdapter::getAdvertIndex(int advertId){
@@ -124,7 +131,7 @@ int FileAdapter::getAdvertIndex(int advertId){
   return -1;
 }
 
-bool FileAdapter::removeAdvert(int id, String advertPassword){
+ErrorResponse FileAdapter::removeAdvert(int id, String advertPassword){
   int index = this->getAdvertIndex(id);
   if(index != -1){
     Serial.print("Removing advert on ");
@@ -134,19 +141,20 @@ bool FileAdapter::removeAdvert(int id, String advertPassword){
 	Serial.println(variant.getMember("password").as<String>());
 	if(variant.getMember("password").as<String>() == advertPassword){
 		this->advertsArray.remove(index);
-		this->saveAdvertsToJson();
-		return true;
+    ErrorResponse response(200, "Advert removed!");
+    return response;
 	} else {
-		Serial.println("Password does not match");
-		return false;
+    Serial.println("Given password does not match");
+    ErrorResponse response(401, "Given password does not match");
+    return response;
 	}
   } else {
-    Serial.println("Given advert not found :(");
-    return false;
+    ErrorResponse response(400, "Given advert not found :(");
+    return response;
   }
 }
 
-bool FileAdapter::editAdvert(int id, String title, String body, String password){
+ErrorResponse FileAdapter::editAdvert(int id, String title, String body, String password){
   int index = this->getAdvertIndex(id);
   if(index != -1){
     Serial.print("Editing advert on ");
@@ -158,13 +166,16 @@ bool FileAdapter::editAdvert(int id, String title, String body, String password)
 		variant.getMember("title").set(title);
 		variant.getMember("body").set(body);
 		this->saveAdvertsToJson();
-		return true;
+    ErrorResponse response(200, "Advert edited!");
+    return response;
 	} else {
 		Serial.println("Given password does not match");
-		return false;
+    ErrorResponse response(401, "Given password does not match");
+    return response;
 	}
   } else {
     Serial.println("Given advert not found :(");
-    return false;
+    ErrorResponse response(400, "Given advert not found :(");
+    return response;
   }
 }

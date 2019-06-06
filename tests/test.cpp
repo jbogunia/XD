@@ -2,6 +2,8 @@
 #include "catch.hpp"
 #include "../class/SampleClass.cpp"
 
+using namespace std;
+
 TEST_CASE( "TestSampleClass", "[stest_sample_class]" ) {
     SampleClass obj;
     obj.set_values(3,4);
